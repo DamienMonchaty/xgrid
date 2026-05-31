@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy frontend to GitHub Pages
 
 on:
   push:
@@ -17,6 +17,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +28,7 @@ jobs:
           bun-version: latest
 
       - name: Install deps
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Generate static site
         env:
@@ -38,7 +41,7 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .output/public
+          path: frontend/.output/public
 
   deploy:
     needs: build
