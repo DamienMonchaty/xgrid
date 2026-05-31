@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@layer base {
+  html, body, #__nuxt {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+  }
+}
+
+/* Configuration thème personnalisé pour Vibe */
+:root {
+  --color-primary-50: 239 246 255;
+  --color-primary-100: 219 234 254;
+  --color-primary-200: 191 219 254;
+  --color-primary-300: 147 197 253;
+  --color-primary-400: 96 165 250;
+  --color-primary-500: 59 130 246;
+  --color-primary-600: 37 99 235;
+  --color-primary-700: 29 78 216;
+  --color-primary-800: 30 64 175;
+  --color-primary-900: 30 58 138;
+  --color-primary-950: 23 37 84;
+
+  /* Couleurs secondaires (bleu aussi pour cohérence) */
+  --color-secondary-50: 239 246 255;
+  --color-secondary-100: 219 234 254;
+  --color-secondary-200: 191 219 254;
+  --color-secondary-300: 147 197 253;
+  --color-secondary-400: 96 165 250;
+  --color-secondary-500: 59 130 246;
+  --color-secondary-600: 37 99 235;
+  --color-secondary-700: 29 78 216;
+  --color-secondary-800: 30 64 175;
+  --color-secondary-900: 30 58 138;
+  --color-secondary-950: 23 37 84;
+}
+
+/* Améliorations pour la lisibilité du texte */
+.text-content {
+  @apply text-gray-900 dark:text-gray-100;
+}
+
+.bg-card {
+  @apply bg-white dark:bg-gray-800;
+}
+
+.border-card {
+  @apply border-gray-200 dark:border-gray-700;
+}
+
+/* Styles pour les posts */
+.post-content {
+  @apply text-gray-900 dark:text-gray-100 leading-relaxed;
+}
+
+.comment-bubble {
+  @apply bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100;
+}
+
+/* Amélioration des contrastes */
+.text-muted {
+  @apply text-gray-600 dark:text-gray-400;
+}
+
+.text-subtle {
+  @apply text-gray-500 dark:text-gray-500;
+}
+
+/* Styles personnalisés pour les composants */
+.post-textarea {
+  @apply bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg;
+  @apply focus:border-primary-500 dark:focus:border-primary-400 focus:ring-1 focus:ring-primary-500/20;
+  @apply text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400;
+  transition: all 0.2s ease-in-out;
+}
+
+.post-textarea:focus {
+  @apply shadow-sm;
+}
+
+.comment-section {
+  @apply bg-gray-50/50 dark:bg-gray-800/50;
+  border-radius: 0 0 0.75rem 0.75rem;
+}
+
+.comment-bubble {
+  @apply bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600;
+  @apply shadow-sm hover:shadow-md transition-shadow duration-200;
+}
+
+.comment-input {
+  @apply bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600;
+  @apply focus:border-primary-500 dark:focus:border-primary-400 focus:ring-1 focus:ring-primary-500/20;
+  @apply rounded-full px-4 py-2;
+}
