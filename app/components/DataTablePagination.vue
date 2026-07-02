@@ -127,31 +127,6 @@
       </p>
     </div>
 
-    <!-- Infinite scroll pagination -->
-    <div v-else-if="actualMode === 'infinite'" :class="ALIGNMENT_CLASSES.center">
-      <div :class="`mb-4 ${computedTheme.paginationText}`">
-        {{ loadMoreInfo }}
-      </div>
-
-      <!-- Infinite scroll trigger - always present to avoid observer issues -->
-      <div :ref="setTriggerRef" class="h-12 flex items-center justify-center">
-        <div v-if="loadingState === LoadingState.LOADING_MORE && isServerMode" class="flex items-center gap-3">
-          <div class="h-5 w-5 rounded-full animate-pulse bg-gray-200" />
-          <span :class="computedTheme.loadingText">{{ TEXT_LABELS.AUTO_LOADING }}</span>
-        </div>
-        <div v-else-if="isServerMode ? !allDataLoaded : canLoadMoreInClient" :class="computedTheme.infoText">
-          {{ TEXT_LABELS.SCROLL_TO_LOAD }}
-        </div>
-        <!-- When no more data, keep element but change message -->
-        <div v-else :class="computedTheme.infoText">
-          <!-- Invisible element to maintain observer but no message -->
-        </div>
-      </div>
-
-      <p v-if="isServerMode ? allDataLoaded : !canLoadMoreInClient" :class="computedTheme.infoText">
-        {{ TEXT_LABELS.ALL_LOADED }}
-      </p>
-    </div>
   </div>
 </template>
 
@@ -160,7 +135,7 @@ import type { ComponentPublicInstance } from 'vue'
 import { ALIGNMENT_CLASSES, TEXT_LABELS } from '../constants/datatable.constants'
 import { LoadingState } from '../composables/useDataTableCore'
 
-type PaginationMode = 'paginated' | 'loadMore' | 'infinite' | 'gridInfinite' | 'none'
+type PaginationMode = 'paginated' | 'loadMore' | 'gridInfinite' | 'none'
 
 type ThemeLike = Record<string, string | undefined>
 

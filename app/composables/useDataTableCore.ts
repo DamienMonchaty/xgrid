@@ -31,8 +31,8 @@ export interface ToolbarConfig {
 export interface DataTableOptions {
   // Source de données simplifiée - détection automatique du mode
   datasource: TableRow[] | string | ServerDatasourceFn // Array = client mode, String = URL serveur, Function = loader serveur custom
-  // Mode pour loadMore/infinite uniquement - pagination classique = paginated: true
-  mode?: 'loadMore' | 'infinite' | 'gridInfinite'
+  // Mode pour loadMore uniquement - pagination classique = paginated: true
+  mode?: 'loadMore' | 'gridInfinite'
 
   /**
    * gridInfinite only: number of pages to keep in memory.
@@ -132,8 +132,8 @@ export interface DataTableCoreProps {
   // ==========================================
   // Source de données simplifiée - détection automatique du mode
   datasource?: TableRow[] | string | ServerDatasourceFn // Array = client mode, String = URL serveur, Function = loader serveur custom
-  // Mode pour loadMore/infinite uniquement - pagination classique = paginated: true
-  mode?: 'loadMore' | 'infinite' | 'gridInfinite'
+  // Mode pour loadMore uniquement - pagination classique = paginated: true
+  mode?: 'loadMore' | 'gridInfinite'
 
   /**
    * gridInfinite only: number of pages to keep in memory.
@@ -499,7 +499,7 @@ export function useDataTableCore(props: DataTableCoreProps) {
    */
   const actualMode = computed(() => {
     if (resolvedMode.value) {
-      return resolvedMode.value // 'loadMore' | 'infinite' | 'gridInfinite'
+      return resolvedMode.value // 'loadMore' | 'gridInfinite'
     }
     return resolvedPagination.value ? 'paginated' : 'none'
   })
@@ -567,7 +567,6 @@ export function useDataTableCore(props: DataTableCoreProps) {
   const hasPagination = computed(() => {
     return resolvedPagination.value || 
            actualMode.value === 'loadMore' || 
-           actualMode.value === 'infinite' ||
            actualMode.value === 'gridInfinite'
   })
   

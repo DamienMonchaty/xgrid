@@ -33,7 +33,7 @@
         <div :class="containerClasses">
             <div :class="computedTheme.wrapper">
                 <!-- Table -->
-                <div ref="gridScrollContainer" :class="tableScrollContainerClasses" @scroll.passive="onGridScroll">
+                <div ref="gridScrollContainer" :class="tableScrollContainerClasses" @scroll.passive="onGridScroll" @wheel.passive="onGridWheel">
                     <table :class="tableClasses" :style="tableStyle" role="grid"
                         :aria-label="TEXT_LABELS.TABLE_CAPTION"
                         :aria-rowcount="isServerMode ? serverTotal : filteredData.length">
@@ -120,7 +120,7 @@
 *
 * @features
 * - Client and server modes with adaptive pagination
-* - Pagination types: simple, loadMore, infinite
+* - Pagination types: simple, loadMore, gridInfinite
 * - Optional modular components (header, toolbar)
 * - Theme system with 5 predefined variants
 * - Strict TypeScript with well-defined interfaces
@@ -724,7 +724,7 @@ const shouldShowPagination = computed<boolean>(() => {
     // In paginated mode, always show pagination (even during loading)
     if (actualMode.value === 'paginated') return true
 
-    // For other modes (loadMore, infinite), hide during initial loading
+    // For other modes (loadMore, gridInfinite), hide during initial loading
     return !isInitialLoading.value
 })
 
@@ -787,8 +787,8 @@ const pagedRows = computed(() => {
     }
 
     // Client mode pagination
-    if (actualMode.value === 'loadMore' || actualMode.value === 'infinite' || actualMode.value === 'gridInfinite') {
-        // Client mode: implement loadMore/infinite - show first X items * loadedPages
+    if (actualMode.value === 'loadMore' || actualMode.value === 'gridInfinite') {
+        // Client mode: implement loadMore/gridInfinite - show first X items * loadedPages
         const itemsToShow = loadedPages.value * reactivePageSize.value
         return sortedData.value.slice(0, itemsToShow)
     } else {
@@ -804,10 +804,10 @@ watchEffect(() => {
     pagedRowsForPreservation.value = pagedRows.value
 })
 
-// For loadMore/infinite in client mode
+// For loadMore/gridInfinite in client mode
 const canLoadMoreInClient = computed(() => {
     if (isServerMode.value) return false
-    if (!['loadMore', 'infinite', 'gridInfinite'].includes(actualMode.value)) return false
+    if (!['loadMore', 'gridInfinite'].includes(actualMode.value)) return false
 
     const itemsShown = loadedPages.value * reactivePageSize.value
     return itemsShown < sortedData.value.length
@@ -820,6 +820,7 @@ const buildFetchQueryRef = ref<((params: LoadDataParams) => Record<string, unkno
 const {
     gridScrollContainer,
     isGridInfiniteCached,
+    gridInfiniteCachePages,
     gridInfiniteMinPageLoaded,
     gridInfiniteMaxPageLoaded,
     gridInfiniteTotalPages,
@@ -830,6 +831,7 @@ const {
     pruneGridInfiniteCache,
     maybeTriggerGridInfiniteLoadMore,
     onGridScroll,
+    onGridWheel,
     onGridInfiniteDataMaybeChanged,
     cleanupGridInfiniteScroll
 } = useDataTableGridInfinite({
@@ -1391,6 +1393,7 @@ const serverLoader = useDataTableServerLoader({
     serverTotal,
     allDataLoaded,
     isGridInfiniteCached,
+    gridInfiniteCachePages,
     gridInfiniteMinPageLoaded,
     gridInfiniteMaxPageLoaded,
     gridInfiniteTotalPages,
@@ -1435,7 +1438,7 @@ async function loadMore() {
         canLoadMoreInClient: canLoadMoreInClient.value
     })
 
-    if (actualMode.value !== 'loadMore' && actualMode.value !== 'infinite' && actualMode.value !== 'gridInfinite') {
+    if (actualMode.value !== 'loadMore' && actualMode.value !== 'gridInfinite') {
         debugLog('LoadMore: Incompatible pagination type')
         return
     }
@@ -1537,8 +1540,8 @@ function handleRefresh() {
 
     // Handle refresh internally based on mode
     if (isServerMode.value) {
-        // Reset pagination state for loadMore/infinite types
-        if (actualMode.value === 'loadMore' || actualMode.value === 'infinite' || actualMode.value === 'gridInfinite') {
+        // Reset pagination state for loadMore/gridInfinite types
+        if (actualMode.value === 'loadMore' || actualMode.value === 'gridInfinite') {
             serverData.value = []
             loadedPages.value = 1
             allDataLoaded.value = false
@@ -1627,9 +1630,9 @@ watch([filteredData, sortKey, sortDir, reactivePageSize], () => {
         page.value = Math.max(1, totalPages.value)
     }
 
-    // Reset loadedPages for loadMore/infinite when data changes in CLIENT mode only
+    // Reset loadedPages for loadMore/gridInfinite when data changes in CLIENT mode only
     // In server mode, data changes when we accumulate it, so we must not reset
-    if (!isServerMode.value && (actualMode.value === 'loadMore' || actualMode.value === 'infinite' || actualMode.value === 'gridInfinite')) {
+    if (!isServerMode.value && (actualMode.value === 'loadMore' || actualMode.value === 'gridInfinite')) {
         loadedPages.value = 1
     }
 })

@@ -32,6 +32,7 @@ export function useDataTableServerLoader(opts: {
 
     // gridInfinite state
     isGridInfiniteCached: Ref<boolean>
+    gridInfiniteCachePages: Ref<number>
     gridInfiniteMinPageLoaded: Ref<number>
     gridInfiniteMaxPageLoaded: Ref<number>
     gridInfiniteTotalPages: Ref<number>
@@ -64,7 +65,7 @@ export function useDataTableServerLoader(opts: {
             return isLoadMore ? base + 1 : 1
         }
 
-        if (opts.actualMode.value === 'loadMore' || opts.actualMode.value === 'infinite') {
+        if (opts.actualMode.value === 'loadMore') {
             return isLoadMore ? opts.loadedPages.value + 1 : 1
         } else {
             return opts.page.value
@@ -225,7 +226,7 @@ export function useDataTableServerLoader(opts: {
             opts.allDataLoaded.value = (apiData.data || []).length < opts.reactivePageSize.value || (apiData.data || []).length >= (apiData.total || 0)
         }
 
-        opts.debugLog('Initial load for loadMore/infinite', {
+        opts.debugLog('Initial load for loadMore/gridInfinite', {
             dataLength: (apiData.data || []).length,
             pageSize: opts.reactivePageSize.value,
             apiTotal: apiData.total,
@@ -293,8 +294,8 @@ export function useDataTableServerLoader(opts: {
             opts.debugLog('LoadServerData: Starting initial loading')
             opts.startInitialLoading()
 
-            // Only reset data for loadMore/infinite/gridInfinite modes
-            if (opts.actualMode.value === 'loadMore' || opts.actualMode.value === 'infinite' || opts.actualMode.value === 'gridInfinite') {
+            // Only reset data for loadMore/gridInfinite modes
+            if (opts.actualMode.value === 'loadMore' || opts.actualMode.value === 'gridInfinite') {
                 opts.serverData.value = []
                 opts.loadedPages.value = 1
                 opts.allDataLoaded.value = false
@@ -306,84 +307,99 @@ export function useDataTableServerLoader(opts: {
         }
 
         try {
-            const currentPage = calculateCurrentPage(isLoadMore)
-            const params = buildApiParams(currentPage)
+            const batchSize = isLoadMore && opts.actualMode.value === 'gridInfinite' && opts.isGridInfiniteCached.value
+                ? Math.max(1, Math.floor(opts.gridInfiniteCachePages.value || 1))
+                : 1
 
-            opts.debugLog('LoadServerData: Page calculation', {
-                isLoadMore,
-                paginationType: opts.actualMode.value,
-                loadedPages: opts.loadedPages.value,
-                pageValue: opts.page.value,
-                currentPage,
-                serverDataLength: opts.serverData.value.length
-            })
+            let nextPage = calculateCurrentPage(isLoadMore)
 
-            opts.debugLog('LoadServerData: API params', params)
+            for (let pageOffset = 0; pageOffset < batchSize; pageOffset++) {
+                const currentPage = nextPage + pageOffset
+                const params = buildApiParams(currentPage)
 
-            // ✅ Emit server request event
-            opts.emitAndCall('server-request', 'onServerRequest', params)
-            // ✅ Legacy compatibility
-            opts.emitLegacy('load-data', params)
-
-            try {
-                // 30s safety timeout
-                let timeoutId: ReturnType<typeof setTimeout> | undefined
-                const timeoutPromise = new Promise((_, reject) => {
-                    timeoutId = setTimeout(() => reject(new Error('API call timeout after 30 seconds')), 30000)
+                opts.debugLog('LoadServerData: Page calculation', {
+                    isLoadMore,
+                    paginationType: opts.actualMode.value,
+                    loadedPages: opts.loadedPages.value,
+                    pageValue: opts.page.value,
+                    currentPage,
+                    batchSize,
+                    serverDataLength: opts.serverData.value.length
                 })
 
-                const fetchPromise: Promise<ServerResponse> = opts.actualServerFn.value
-                    ? Promise.resolve(opts.actualServerFn.value(params))
-                    : ($fetch<ServerResponse>(opts.actualApiUrl.value as string, {
-                        query: buildFetchQuery(params),
-                        timeout: 30000
-                    }) as Promise<ServerResponse>)
+                opts.debugLog('LoadServerData: API params', params)
 
-                const apiData = (await Promise.race([fetchPromise, timeoutPromise]).finally(() => {
-                    if (timeoutId) clearTimeout(timeoutId)
-                })) as ServerResponse
+                // ✅ Emit server request event
+                opts.emitAndCall('server-request', 'onServerRequest', params)
+                // ✅ Legacy compatibility
+                opts.emitLegacy('load-data', params)
 
-                opts.debugLog('LoadServerData: API response received', { success: apiData?.success, dataLength: apiData?.data?.length })
+                try {
+                    // 30s safety timeout
+                    let timeoutId: ReturnType<typeof setTimeout> | undefined
+                    const timeoutPromise = new Promise((_, reject) => {
+                        timeoutId = setTimeout(() => reject(new Error('API call timeout after 30 seconds')), 30000)
+                    })
 
-                if (apiData?.success) {
-                    // Handle different data loading scenarios
-                    if (isLoadMore) {
-                        handleLoadMoreData(apiData, currentPage)
-                    } else if (opts.actualMode.value === 'loadMore' || opts.actualMode.value === 'infinite' || opts.actualMode.value === 'gridInfinite') {
-                        handleInitialLoadMore(apiData)
+                    const fetchPromise: Promise<ServerResponse> = opts.actualServerFn.value
+                        ? Promise.resolve(opts.actualServerFn.value(params))
+                        : ($fetch<ServerResponse>(opts.actualApiUrl.value as string, {
+                            query: buildFetchQuery(params),
+                            timeout: 30000
+                        }) as Promise<ServerResponse>)
+
+                    const apiData = (await Promise.race([fetchPromise, timeoutPromise]).finally(() => {
+                        if (timeoutId) clearTimeout(timeoutId)
+                    })) as ServerResponse
+
+                    opts.debugLog('LoadServerData: API response received', { success: apiData?.success, dataLength: apiData?.data?.length })
+
+                    if (apiData?.success) {
+                        // Handle different data loading scenarios
+                        if (isLoadMore) {
+                            handleLoadMoreData(apiData, currentPage)
+                        } else if (opts.actualMode.value === 'loadMore' || opts.actualMode.value === 'gridInfinite') {
+                            handleInitialLoadMore(apiData)
+                        } else {
+                            handlePaginationData(apiData, currentPage)
+                        }
+
+                        opts.serverTotal.value = apiData.total || 0
+
+                        const result: DataLoadedResult = {
+                            data: apiData.data,
+                            total: apiData.total,
+                            page: apiData.page,
+                            totalPages: apiData.totalPages,
+                            isLoadMore
+                        }
+
+                        // ✅ Emit modern server response event
+                        opts.emitAndCall('server-response', 'onServerResponse', result)
+                        // ✅ Legacy compatibility
+                        opts.emitLegacy('data-loaded', result)
+
+                        opts.forceCheckboxUpdate()
+
+                        if ((apiData.data || []).length < opts.reactivePageSize.value) {
+                            break
+                        }
                     } else {
-                        handlePaginationData(apiData, currentPage)
+                        handleApiError(apiData, isLoadMore)
+                        break
                     }
-
-                    opts.serverTotal.value = apiData.total || 0
-
-                    const result: DataLoadedResult = {
-                        data: apiData.data,
-                        total: apiData.total,
-                        page: apiData.page,
-                        totalPages: apiData.totalPages,
+                } catch (fetchError) {
+                    console.error('LoadServerData: Fetch error:', fetchError)
+                    opts.debugLog('LoadServerData: Error details', {
+                        error: fetchError,
+                        url: opts.actualApiUrl.value,
+                        params,
                         isLoadMore
-                    }
-
-                    // ✅ Emit modern server response event
-                    opts.emitAndCall('server-response', 'onServerResponse', result)
-                    // ✅ Legacy compatibility
-                    opts.emitLegacy('data-loaded', result)
-
-                    opts.forceCheckboxUpdate()
-                } else {
-                    handleApiError(apiData, isLoadMore)
+                    })
+                    handleFetchError(fetchError, isLoadMore)
+                    opts.emitAndCall('error', 'onError', fetchError instanceof Error ? fetchError : new Error(String(fetchError)))
+                    break
                 }
-            } catch (fetchError) {
-                console.error('LoadServerData: Fetch error:', fetchError)
-                opts.debugLog('LoadServerData: Error details', {
-                    error: fetchError,
-                    url: opts.actualApiUrl.value,
-                    params,
-                    isLoadMore
-                })
-                handleFetchError(fetchError, isLoadMore)
-                opts.emitAndCall('error', 'onError', fetchError instanceof Error ? fetchError : new Error(String(fetchError)))
             }
         } finally {
             opts.stopLoading()

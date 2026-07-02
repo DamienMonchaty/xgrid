@@ -7,7 +7,7 @@ import type { TableRow, ServerDatasourceFn } from '~/types/datatable.types'
 
 export interface DataTableProps {
   datasource: TableRow[] | string | ServerDatasourceFn
-  mode?: 'loadMore' | 'infinite' | 'gridInfinite'
+  mode?: 'loadMore' | 'gridInfinite'
   gridInfiniteCachePages?: number
   columns: Column[]
   expandable?: boolean
@@ -189,7 +189,7 @@ export function validateDataTableProps(props: DataTableProps): ValidationError[]
   if (props.mode && props.paginated) {
     errors.push({
       field: 'mode',
-      message: 'Do not use "mode" and "paginated" together. Use "paginated: true" for classic pagination or "mode" for loadMore/infinite',
+      message: 'Do not use "mode" and "paginated" together. Use "paginated: true" for classic pagination or "mode" for loadMore/gridInfinite',
       type: 'warning'
     })
   }

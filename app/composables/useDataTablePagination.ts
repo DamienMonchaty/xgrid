@@ -41,7 +41,7 @@ export const useDataTablePagination = (
   })
 
   /**
-   * Informations pour les modes loadMore et infinite
+   * Informations pour les modes loadMore et gridInfinite
    */
   const loadMoreInfo = computed((): string => {
     if (isServerMode.value) {
@@ -130,7 +130,7 @@ export const useDataTablePagination = (
       return paginationInfo.value
     }
 
-    if (actualPaginationType.value === 'loadMore' || actualPaginationType.value === 'infinite' || actualPaginationType.value === 'gridInfinite') {
+    if (actualPaginationType.value === 'loadMore' || actualPaginationType.value === 'gridInfinite') {
       const baseInfo = loadMoreInfo.value
       
       if (hasMoreData.value) {
@@ -183,12 +183,12 @@ export const useDataTablePagination = (
       return page.value === totalPages.value
     }
     
-    // Pour loadMore/infinite, on considère qu'on est sur la "dernière page" s'il n'y a plus de données
+    // Pour loadMore/gridInfinite, on considère qu'on est sur la "dernière page" s'il n'y a plus de données
     return !hasMoreData.value
   })
 
   /**
-   * Calcule la progression en pourcentage pour les modes loadMore/infinite
+   * Calcule la progression en pourcentage pour les modes loadMore/gridInfinite
    */
   const loadingProgress = computed((): number => {
     if (actualPaginationType.value === 'pages') {

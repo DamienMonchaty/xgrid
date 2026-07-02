@@ -188,26 +188,48 @@ export function useDataTableGridInfinite(opts: {
         if (!el) return
 
         if (el.scrollTop <= GRID_INFINITE_TOP_THRESHOLD_PX) {
-            opts.debugLog('GridInfinite: near top -> load previous page', { source, scrollTop: el.scrollTop })
-            loadGridInfinitePreviousPage()
+            const batchSize = Math.max(1, gridInfiniteCachePages.value || 1)
+            opts.debugLog('GridInfinite: near top -> load previous pages', { source, scrollTop: el.scrollTop, batchSize })
+            loadGridInfinitePreviousPage(batchSize)
         }
     }
 
     function onGridScroll() {
         if (opts.actualMode.value !== 'gridInfinite') return
 
-        // Throttle to avoid calling loadMore too often while scrolling
+        const el = gridScrollContainer.value
+        if (!el) return
+
+        if (el.scrollTop <= GRID_INFINITE_TOP_THRESHOLD_PX) {
+            nextTick(() => {
+                maybeTriggerGridInfiniteLoadPrevious('scroll')
+            })
+            return
+        }
+
         if (gridInfiniteScrollThrottleTimer) return
         gridInfiniteScrollThrottleTimer = setTimeout(() => {
             gridInfiniteScrollThrottleTimer = null
             nextTick(() => {
                 maybeTriggerGridInfiniteLoadMore('scroll')
-                maybeTriggerGridInfiniteLoadPrevious('scroll')
             })
         }, DATATABLE_CONSTANTS.TIMEOUTS.INFINITE_SCROLL_THROTTLE)
     }
 
-    async function loadGridInfinitePreviousPage() {
+    function onGridWheel(event: WheelEvent) {
+        if (opts.actualMode.value !== 'gridInfinite') return
+
+        const el = gridScrollContainer.value
+        if (!el) return
+
+        if (event.deltaY < 0 && el.scrollTop <= GRID_INFINITE_TOP_THRESHOLD_PX) {
+            nextTick(() => {
+                maybeTriggerGridInfiniteLoadPrevious('wheel')
+            })
+        }
+    }
+
+    async function loadGridInfinitePreviousPage(pagesToLoad = 1) {
         if (!isGridInfiniteCached.value) return
         if (!opts.isServerMode.value || !opts.actualApiUrl.value) return
         if (opts.loadingState.value === LoadingState.LOADING_MORE) return
@@ -217,54 +239,47 @@ export function useDataTableGridInfinite(opts: {
         const buildFetchQuery = opts.buildFetchQueryRef.value
         if (!buildApiParams || !buildFetchQuery) return
 
-        const prevPage = gridInfiniteMinPageLoaded.value - 1
         const el = gridScrollContainer.value
+        const totalPagesToLoad = Math.max(1, Math.min(Math.floor(pagesToLoad || 1), Math.max(1, gridInfiniteMinPageLoaded.value - 1)))
+        const startingScrollTop = el?.scrollTop ?? 0
+        const startingScrollHeight = el?.scrollHeight ?? 0
 
         gridInfiniteLoadingDirection.value = 'up'
-
         opts.startLoadingMore()
+
         try {
-            const params = buildApiParams(prevPage)
+            let currentMinPage = gridInfiniteMinPageLoaded.value
+            let loadedCount = 0
 
-            opts.debugLog('GridInfinite: Fetch previous page', { prevPage, params })
+            while (loadedCount < totalPagesToLoad && currentMinPage > 1) {
+                const prevPage = currentMinPage - 1
+                const params = buildApiParams(prevPage)
 
-            opts.emitAndCall('server-request', 'onServerRequest', params)
-            opts.emitLegacy('load-data', params)
+                opts.debugLog('GridInfinite: Fetch previous page', { prevPage, params, loadedCount, totalPagesToLoad })
 
-            const apiData = await $fetch<ServerResponse>(opts.actualApiUrl.value, {
-                query: buildFetchQuery(params),
-                timeout: 30000
-            })
+                opts.emitAndCall('server-request', 'onServerRequest', params)
+                opts.emitLegacy('load-data', params)
 
-            if (apiData?.success) {
-                const newRows = apiData.data || []
+                const apiData = await $fetch<ServerResponse>(opts.actualApiUrl.value, {
+                    query: buildFetchQuery(params),
+                    timeout: 30000
+                })
 
-                // Snapshot DOM AFTER the await (= just before the mutation):
-                // the user may have scrolled during the fetch, so we must use the
-                // current scrollTop/scrollHeight, not a stale value captured before.
-                const prevScrollTop = el?.scrollTop ?? 0
-                const prevScrollHeight = el?.scrollHeight ?? 0
-
-                // Prepend new rows
-                opts.serverData.value = [...newRows, ...(opts.serverData.value || [])]
-                gridInfinitePageSizes[prevPage] = newRows.length
-                gridInfiniteMinPageLoaded.value = prevPage
-                gridInfiniteTotalPages.value = apiData.totalPages || gridInfiniteTotalPages.value
-
-                // Keep max in sync
-                gridInfiniteMaxPageLoaded.value = Math.max(gridInfiniteMaxPageLoaded.value, prevPage)
-
-                // Compensate scroll using the exact pixel delta from the DOM,
-                // anchoring on whatever the user is looking at RIGHT NOW.
-                if (el) {
-                    nextTick(() => {
-                        const addedPx = Math.max(0, el.scrollHeight - prevScrollHeight)
-                        adjustScrollTopProgrammatically(el, prevScrollTop + addedPx)
-                    })
+                if (!apiData?.success) {
+                    console.error('API error:', apiData?.error)
+                    opts.forceCheckboxUpdate()
+                    break
                 }
 
-                // Cache eviction from bottom when going up
-                pruneGridInfiniteCache('up')
+                const newRows = apiData.data || []
+
+                opts.serverData.value = [...newRows, ...(opts.serverData.value || [])]
+                gridInfinitePageSizes[prevPage] = newRows.length
+                currentMinPage = prevPage
+                gridInfiniteMinPageLoaded.value = prevPage
+                gridInfiniteTotalPages.value = apiData.totalPages || gridInfiniteTotalPages.value
+                gridInfiniteMaxPageLoaded.value = Math.max(gridInfiniteMaxPageLoaded.value, prevPage)
+                loadedCount += 1
 
                 const result: DataLoadedResult = {
                     data: apiData.data,
@@ -279,12 +294,17 @@ export function useDataTableGridInfinite(opts: {
 
                 opts.serverTotal.value = apiData.total || opts.serverTotal.value
                 opts.allDataLoaded.value = gridInfiniteMaxPageLoaded.value >= (apiData.totalPages || gridInfiniteTotalPages.value)
-
-                opts.forceCheckboxUpdate()
-            } else {
-                console.error('API error:', apiData?.error)
                 opts.forceCheckboxUpdate()
             }
+
+            if (el) {
+                nextTick(() => {
+                    const addedPx = Math.max(0, el.scrollHeight - startingScrollHeight)
+                    adjustScrollTopProgrammatically(el, startingScrollTop + addedPx)
+                })
+            }
+
+            pruneGridInfiniteCache('up')
         } catch (fetchError) {
             console.error('Failed to load server data:', fetchError)
             opts.emitAndCall('error', 'onError', fetchError instanceof Error ? fetchError : new Error(String(fetchError)))
@@ -348,6 +368,7 @@ export function useDataTableGridInfinite(opts: {
         maybeTriggerGridInfiniteLoadMore,
         maybeTriggerGridInfiniteLoadPrevious,
         onGridScroll,
+        onGridWheel,
         onGridInfiniteDataMaybeChanged,
         cleanupGridInfiniteScroll
     }

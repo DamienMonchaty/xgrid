@@ -234,7 +234,7 @@
                   size="sm"
                 />
 
-                <!-- loadMore / infinite: use `mode` prop only -->
+                <!-- loadMore / gridInfinite: use `mode` prop only -->
                 <DataTable
                   v-else
                   :key="`mode-${activePagMode}`"
@@ -905,7 +905,7 @@ function logLiveEvent(name: string, data: unknown) {
 // ========== METADATA ==========
 const featureList = [
   { icon: 'i-lucide-zap',           label: 'Client & Server',  desc: 'Local array or remote API URL.' },
-  { icon: 'i-lucide-layers',        label: '5 pagination modes', desc: 'paginated, loadMore, infinite, grid…' },
+  { icon: 'i-lucide-layers',        label: '5 pagination modes', desc: 'paginated, loadMore, gridInfinite, grid…' },
   { icon: 'i-lucide-filter',        label: 'Column filters',     desc: 'text, select, number, date, boolean.' },
   { icon: 'i-lucide-arrow-up-down', label: 'Typed sorting',      desc: 'Native string, number, date.' },
   { icon: 'i-lucide-check-square',  label: 'Selection + Bulk',   desc: 'Configurable bulk actions.' },
@@ -918,10 +918,9 @@ const featureList = [
   { icon: 'i-lucide-wrench',        label: 'Modular toolbar',    desc: 'Search, columns, export, actions.' },
 ]
 
-const paginationModes: Array<{ value: string; label: string; desc: string; badge: string; mode: 'loadMore' | 'infinite' | 'gridInfinite' | undefined }> = [
+const paginationModes: Array<{ value: string; label: string; desc: string; badge: string; mode: 'loadMore' | 'gridInfinite' | undefined }> = [
   { value: 'paginated',    label: 'Paginated',     desc: 'Classic pages with page navigation.',                badge: 'default', mode: undefined     },
   { value: 'loadMore',     label: 'Load more',     desc: 'A "Load more" button below the table.',              badge: '',        mode: 'loadMore'    },
-  { value: 'infinite',     label: 'Infinite',      desc: 'Auto-load on page scroll near the bottom.',          badge: '',        mode: 'infinite'    },
   { value: 'gridInfinite', label: 'Grid infinite', desc: 'Infinite scroll inside the table (fixed height).',   badge: 'new',     mode: 'gridInfinite' },
   { value: 'none',         label: 'None',          desc: 'All data rendered with no pagination.',              badge: '',        mode: undefined     },
 ]
@@ -1193,7 +1192,7 @@ const serverModeParams = [
 
 const paginationProps = [
   { name: 'pagination',       type: 'boolean',             default: 'true',      desc: 'Enable pagination.' },
-  { name: 'mode',             type: 'string',              default: 'paginated', desc: 'loadMore | infinite | gridInfinite.' },
+  { name: 'mode',             type: 'string',              default: 'paginated', desc: 'loadMore | gridInfinite.' },
   { name: 'pageSize',         type: 'number',              default: '10',        desc: 'Initial page size.' },
   { name: 'pageSizeSelector', type: 'boolean | number[]',  default: 'false',     desc: 'Page size selector.' },
 ]
@@ -1277,7 +1276,7 @@ const propsBehavior = [
   { name: 'expandable',  type: 'boolean',      default: 'false',     desc: 'Enable master / detail.' },
   { name: 'searchable',  type: 'boolean',      default: 'false',     desc: 'Enable global search.' },
   { name: 'pagination',  type: 'boolean',      default: 'true',      desc: 'Enable pagination.' },
-  { name: 'mode',        type: 'string',       default: 'paginated', desc: 'loadMore | infinite | gridInfinite.' },
+  { name: 'mode',        type: 'string',       default: 'paginated', desc: 'loadMore | gridInfinite.' },
   { name: 'pageSize',    type: 'number',       default: '10',        desc: 'Rows per page.' },
   { name: 'bulkActions', type: 'BulkAction[]', default: '[]',        desc: 'Bulk actions.' },
   { name: 'debug',       type: 'boolean',      default: 'false',     desc: 'Verbose console logs.' },

@@ -360,12 +360,11 @@
         </template>
       </template>
 
-      <!-- Loading more rows skeleton (for loadMore/infinite) -->
+      <!-- Loading more rows skeleton (for loadMore/gridInfinite) -->
       <template
         v-if="
           loadingState === LoadingState.LOADING_MORE &&
           (actualMode === 'loadMore' ||
-            actualMode === 'infinite' ||
             (actualMode === 'gridInfinite' && gridInfiniteLoadingDirection !== 'up'))
         "
       >

@@ -17,7 +17,7 @@ export type RowId = string | number
 export type ColumnFilterType = 'text' | 'select' | 'dateRange' | 'numberRange' | 'boolean' | 'custom'
 export type TableVariant = 'default' | 'default-dark' | 'elegant' | 'elegant-dark' | 'modern' | 'modern-dark'
 export type TableSize = 'xs' | 'sm' | 'md' | 'lg'
-export type PaginationType = 'paginated' | 'loadMore' | 'infinite' | 'gridInfinite' | 'none'
+export type PaginationType = 'paginated' | 'loadMore' | 'gridInfinite' | 'none'
 export type LoadingState = 'idle' | 'initial_loading' | 'loading_more' | 'refreshing'
 
 // Interfaces principales
@@ -180,7 +180,7 @@ export interface TableTheme {
 export interface DataTableProps {
     // Source de données
     datasource: TableRow[] | string | ServerDatasourceFn
-    mode?: 'loadMore' | 'infinite' | 'gridInfinite'
+    mode?: 'loadMore' | 'gridInfinite'
 
     /** Enable master/detail rows (nested content rendered via `row-detail` slot). */
     expandable?: boolean
