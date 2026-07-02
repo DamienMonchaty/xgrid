@@ -32,6 +32,16 @@ export interface FilterValue {
     value2?: unknown  // For range filters (between, notBetween)
 }
 
+export interface ValueGetterParams {
+    row: TableRow
+    data: TableRow
+    column: Column
+    value: unknown
+    rowIndex?: number
+}
+
+export interface TooltipValueGetterParams extends ValueGetterParams {}
+
 export interface Column {
     key: string
     label: string
@@ -49,6 +59,8 @@ export interface Column {
     maxWidth?: string | number
     minWidth?: string | number
     showTooltip?: boolean
+    valueGetter?: (params: ValueGetterParams) => unknown
+    tooltipValueGetter?: (params: TooltipValueGetterParams) => string | number | boolean | null | undefined
     wrap?: boolean  // Allow text wrapping in cells
     // Custom filter — client-side predicate
     filterFn?: (row: TableRow, value: unknown) => boolean
@@ -70,6 +82,13 @@ export interface BulkAction {
     label: string
     variant?: 'link' | 'solid' | 'outline' | 'soft' | 'subtle' | 'ghost'
     color?: 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+}
+
+export interface TableGrouping {
+    key?: string
+    keys?: string[]
+    valueGetter?: (params: ValueGetterParams) => string | number | boolean | null | undefined
+    labelGetter?: (value: unknown, rows: TableRow[], key: string) => string
 }
 
 export interface TableRow {

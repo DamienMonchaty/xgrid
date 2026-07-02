@@ -191,6 +191,10 @@ import { buildDefaultColumnFilterValue } from '../utils/datatable-filters'
 
 const attrs = useAttrs()
 
+type TableDisplayEntry =
+    | { type: 'group'; key: string; label: string; rowCount: number; collapsed: boolean }
+    | { type: 'row'; row: TableRow; index: number; rowId: RowId }
+
 // Simplified props - modern approach using DataTableOptions
 // NOTE: For boolean props whose intended default is `true`, we must provide a runtime
 // default here. Otherwise Vue treats absent boolean props as `false`, which prevents
@@ -452,6 +456,22 @@ const {
     debug: computed(() => resolvedOptions.value.debug)
 })
 
+const collapsedGroupKeys = ref<Set<string>>(new Set())
+
+function toggleGroupCollapse(groupKey: string) {
+    const next = new Set(collapsedGroupKeys.value)
+    if (next.has(groupKey)) {
+        next.delete(groupKey)
+    } else {
+        next.add(groupKey)
+    }
+    collapsedGroupKeys.value = next
+}
+
+function isGroupCollapsed(groupKey: string) {
+    return collapsedGroupKeys.value.has(groupKey)
+}
+
 const dataTableBodyBindings = computed(() => {
     return {
         setTableBodyRef: setTableBodyEl,
@@ -492,6 +512,7 @@ const dataTableBodyBindings = computed(() => {
         getColumnStyles,
         getSkeletonWidth,
         getColumnValue,
+        getCellTooltipValue,
         getCheckboxClasses,
 
         toggleSelect,
@@ -520,6 +541,9 @@ const dataTableBodyBindings = computed(() => {
         getCellValidation,
 
         shouldShowTooltip,
+        toggleGroupCollapse,
+        isGroupCollapsed,
+        displayRows: unref(displayRows),
         startCellEdit
     }
 })
@@ -955,8 +979,114 @@ function onSelectFilterToggle(columnKey: string, optionKey: string, checked: boo
 
 // Methods
 function getColumnValue(row: TableRow, key: string): unknown {
-    return row[key]
+    const column = resolvedOptions.value.columns.find(col => col.key === key)
+    const rawValue = row[key]
+    if (!column) return rawValue
+
+    const params = {
+        row,
+        data: row,
+        column,
+        value: rawValue,
+        rowIndex: undefined
+    }
+
+    return column.valueGetter ? column.valueGetter(params) : rawValue
 }
+
+function getCellTooltipValue(row: TableRow, column: Column): unknown {
+    const value = getColumnValue(row, column.key)
+    const params = {
+        row,
+        data: row,
+        column,
+        value,
+        rowIndex: undefined
+    }
+
+    return column.tooltipValueGetter ? column.tooltipValueGetter(params) : value
+}
+
+function getGroupingValue(row: TableRow, key: string): unknown {
+    const column = resolvedOptions.value.columns.find(col => col.key === key)
+    const rawValue = row[key]
+    if (!column) return rawValue
+
+    const params = {
+        row,
+        data: row,
+        column,
+        value: rawValue,
+        rowIndex: undefined
+    }
+
+    return column.valueGetter ? column.valueGetter(params) : rawValue
+}
+
+function getGroupingLabel(rows: TableRow[], groupKeys: string[]): string {
+    const grouping = resolvedOptions.value.grouping
+    if (!grouping) return ''
+
+    const firstRow = rows[0]
+    if (!firstRow) return ''
+
+    if (grouping.labelGetter) {
+        const value = groupKeys.length === 1
+            ? getGroupingValue(firstRow, groupKeys[0] ?? '')
+            : groupKeys.map(key => getGroupingValue(firstRow, key)).join(' / ')
+        return grouping.labelGetter(value, rows, groupKeys[0] ?? '')
+    }
+
+    const values = groupKeys.map((groupKey) => {
+        const value = getGroupingValue(firstRow, groupKey)
+        return value == null || value === '' ? '(empty)' : String(value)
+    })
+
+    return values.join(' / ')
+}
+
+const displayRows = computed<TableDisplayEntry[]>(() => {
+    const baseRows = pagedRows.value
+    const grouping = resolvedOptions.value.grouping
+
+    if (!grouping?.key && !grouping?.keys?.length) {
+        return baseRows.map((row, index) => ({
+            type: 'row',
+            row,
+            index,
+            rowId: getRowId(row)
+        }))
+    }
+
+    const groupKeys = grouping.keys?.length ? grouping.keys : [grouping.key].filter(Boolean) as string[]
+    const groups = new Map<string, TableRow[]>()
+
+    for (const row of baseRows) {
+        const bucketKey = groupKeys.map((groupKey) => {
+            const value = getGroupingValue(row, groupKey)
+            return value == null ? '' : String(value)
+        }).join('::')
+
+        const bucket = groups.get(bucketKey) ?? []
+        bucket.push(row)
+        groups.set(bucketKey, bucket)
+    }
+
+    const entries: TableDisplayEntry[] = []
+    for (const [bucketKey, rows] of groups.entries()) {
+        const label = getGroupingLabel(rows, groupKeys)
+        const groupKey = `group-${bucketKey}`
+        const collapsed = isGroupCollapsed(groupKey)
+        entries.push({ type: 'group', key: groupKey, label, rowCount: rows.length, collapsed })
+        if (!collapsed) {
+            rows.forEach((row, index) => {
+                entries.push({ type: 'row', row, index, rowId: getRowId(row) })
+            })
+        }
+    }
+
+    return entries
+})
 
 // Computed property for column styles to ensure reactivity
 // ✅ Optimized: Memoized columnStyles with better caching strategy
@@ -1017,13 +1147,12 @@ function getColumnStyles(column: Column): string {
 }
 
 // Tooltip helper function
-function shouldShowTooltip(value: unknown): boolean {
-    // Only show tooltip for non-empty string values
-    if (typeof value !== 'string') return false
-    if (!value || value.trim() === '') return false
+function shouldShowTooltip(value: unknown, column?: Column): boolean {
+    if (!column?.showTooltip) return false
+    if (value == null) return false
 
-    // Show tooltip for long text based on configured threshold
-    return value.length > DATATABLE_CONSTANTS.TOOLTIP.TEXT_LENGTH_THRESHOLD
+    const text = String(value)
+    return text.trim() !== ''
 }
 
 // Checkbox styling function

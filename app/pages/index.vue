@@ -286,6 +286,20 @@
                 />
               </DocCard>
 
+              <DocCard title="Grouping" desc="Group rows visually by a column and optionally customize the group label.">
+                <CodeBlock :code="codeGroupingExample" language="vue" />
+                <div class="mt-5">
+                  <DataTable
+                    :datasource="groupingRows"
+                    :columns="groupingCols"
+                    :grouping="groupingConfig"
+                    :pagination="false"
+                    size="sm"
+                    :toolbar="{ title: 'Grouped rows' }"
+                  />
+                </div>
+              </DocCard>
+
               <DocCard title="Alignment and width">
                 <CodeBlock :code="codeColumnAlign" language="ts" />
               </DocCard>
@@ -703,6 +717,64 @@ const quickStartCols: Column[] = [
   { key: 'status', label: 'Status', type: 'select', width: 110, align: 'center', filterable: true, filterType: 'select', filterOptions: ['published', 'draft'] },
   { key: 'views',  label: 'Views',  type: 'number', width: 90,  align: 'right',  sortable: true },
 ]
+
+const groupingRows: TableRow[] = [
+  { id: 1, owner: 'Alicia', team: 'Core', category: 'Frontend', bronze: 2, silver: 1, gold: 0 },
+  { id: 2, owner: 'Benoît', team: 'Core', category: 'Frontend', bronze: 1, silver: 2, gold: 1 },
+  { id: 3, owner: 'Camille', team: 'Platform', category: 'Backend', bronze: 0, silver: 3, gold: 1 },
+  { id: 4, owner: 'Dina', team: 'Platform', category: 'Backend', bronze: 2, silver: 0, gold: 2 },
+  { id: 5, owner: 'Eli', team: 'Design', category: 'UX', bronze: 1, silver: 1, gold: 0 },
+]
+
+const groupingCols: Column[] = [
+  { key: 'owner', label: 'Owner', sortable: true, minWidth: 140 },
+  { key: 'team', label: 'Team', sortable: true, width: 120 },
+  { key: 'category', label: 'Category', sortable: true, width: 130 },
+  {
+    key: 'total',
+    label: 'Total medals',
+    type: 'number',
+    align: 'right',
+    width: 130,
+    valueGetter: (params) => Number(params.data.bronze ?? 0) + Number(params.data.silver ?? 0) + Number(params.data.gold ?? 0),
+  },
+]
+
+const groupingConfig = {
+  key: 'category',
+  labelGetter: (value: unknown) => `Category · ${String(value)}`,
+}
+
+const codeGroupingExample = `const groupingRows = [
+  { owner: 'Alicia', team: 'Core', category: 'Frontend', bronze: 2, silver: 1, gold: 0 },
+  { owner: 'Benoît', team: 'Core', category: 'Frontend', bronze: 1, silver: 2, gold: 1 },
+  { owner: 'Camille', team: 'Platform', category: 'Backend', bronze: 0, silver: 3, gold: 1 },
+]
+
+const groupingCols = [
+  { key: 'owner', label: 'Owner', sortable: true },
+  { key: 'team', label: 'Team', sortable: true, width: 120 },
+  { key: 'category', label: 'Category', sortable: true, width: 130 },
+  {
+    key: 'total',
+    label: 'Total medals',
+    type: 'number',
+    align: 'right',
+    valueGetter: (params) => Number(params.data.bronze ?? 0) + Number(params.data.silver ?? 0) + Number(params.data.gold ?? 0),
+  },
+]
+
+const groupingConfig = {
+  key: 'category',
+  labelGetter: (value) => \`Category · \${value}\`,
+}
+
+<DataTable
+  :datasource="groupingRows"
+  :columns="groupingCols"
+  :grouping="groupingConfig"
+  :pagination="false"
+/>`
 
 const bigRows: TableRow[] = Array.from({ length: 25 }, (_, i) => ({
   id: i + 1,

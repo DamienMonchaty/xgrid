@@ -1,4 +1,4 @@
-import type { TableRow, Column, BulkAction, TableTheme, ColumnFilter, LoadDataParams, DataLoadedResult, ServerDatasourceFn } from '../types/datatable.types'
+import type { TableRow, Column, BulkAction, TableTheme, ColumnFilter, LoadDataParams, DataLoadedResult, ServerDatasourceFn, TableGrouping } from '../types/datatable.types'
 import { validateAndLogDataTableProps } from '../validators/datatable.validators'
 import { DATATABLE_CONSTANTS } from '../constants/datatable.constants'
 
@@ -75,6 +75,7 @@ export interface DataTableOptions {
   debug?: boolean
   bulkActions?: BulkAction[]
   rowIdKey?: string
+  grouping?: TableGrouping
   // Composants modulaires
   toolbar?: boolean | ToolbarConfig
   // Props de style
@@ -168,6 +169,7 @@ export interface DataTableCoreProps {
   debug?: boolean
   bulkActions?: BulkAction[]
   rowIdKey?: string
+  grouping?: TableGrouping
   // Composants modulaires
   toolbar?: boolean | ToolbarConfig
   // Props de style
@@ -303,6 +305,10 @@ export function useDataTableCore(props: DataTableCoreProps) {
   
   const resolvedRowIdKey = computed(() => 
     resolveOption(props.rowIdKey, 'rowIdKey', 'id')
+  )
+
+  const resolvedGrouping = computed(() =>
+    resolveOption(props.grouping, 'grouping', undefined as TableGrouping | undefined)
   )
   
   const resolvedToolbar = computed(() => 
@@ -1040,6 +1046,7 @@ export function useDataTableCore(props: DataTableCoreProps) {
       debug: resolvedDebug.value,
       bulkActions: resolvedBulkActions.value,
       rowIdKey: resolvedRowIdKey.value,
+      grouping: resolvedGrouping.value,
       toolbar: resolvedToolbar.value,
       export: toolbarConfig.value?.showExport || false,
       refresh: toolbarConfig.value?.showRefresh || false,
